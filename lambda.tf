@@ -4,7 +4,7 @@ resource "aws_lambda_function" "put_dynamodb" {
  function_name = "putitem"
   runtime = "python3.11"
   handler = "putitem.lambda_handler"
-  role = aws_iam_role.lambda_exec.arn
+  role = aws_iam_role.lambda_exec_dynamodb.arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_put_dynamodb" {
@@ -13,8 +13,8 @@ resource "aws_cloudwatch_log_group" "lambda_put_dynamodb" {
   retention_in_days = 30
 }
 
-resource "aws_iam_role" "lambda_exec" {
-  name = "serverless_lambda"
+resource "aws_iam_role" "lambda_exec_dynamodb" {
+  name = "serverless_lambda_dynamodb"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -31,7 +31,7 @@ resource "aws_iam_role" "lambda_exec" {
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
-  role       = aws_iam_role.lambda_exec.name
+  role       = aws_iam_role.lambda_exec_dynamodb.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   
 }
@@ -51,7 +51,7 @@ resource "aws_iam_policy" "iam_policy_for_lambda_dynamodb" {
         "dynamodb:PutItem"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:dynamodb:eu-central-1:117995874887:table/delivery"
+      "Resource": "arn:aws:dynamodb:YourRegion:YourID:table/delivery"
     }
   ]
 }
@@ -59,8 +59,34 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "attach_iam_policy_lambda_dynamodb" {
-  role        = aws_iam_role.lambda_exec.name
+  role        = aws_iam_role.lambda_exec_dynamodb.name
   policy_arn  = aws_iam_policy.iam_policy_for_lambda_dynamodb.arn
 }
 
+
+resource "aws_iam_role_policy_attachment" "example_lambda" {
+  policy_arn = "${aws_iam_policy.example_lambda.arn}"
+  role = aws_iam_role.lambda_exec_dynamodb.name
+}
+
+resource "aws_iam_policy" "example_lambda" {
+  policy = "${data.aws_iam_policy_document.example_lambda.json}"
+}
+
+data "aws_iam_policy_document" "example_lambda" {
+  statement {
+    sid       = "AllowSQSPermissions"
+    effect    = "Allow"
+    resources = ["arn:aws:sqs:*"]
+
+    actions = [
+      "sqs:ChangeMessageVisibility",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes",
+      "sqs:ReceiveMessage",
+      "sqs:SendMessage",
+      
+    ]
+  }
+}
 
